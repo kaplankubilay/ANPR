@@ -45,7 +45,6 @@ namespace ANPR
             vcd.Start();
             timer1.Start();
             _plateList = _dataBase.PlateRecognition.ToList();
-
         }
 
         /// <summary>
@@ -58,84 +57,73 @@ namespace ANPR
             pictureBox1.Image = (Bitmap)eventArgs.Frame.Clone();
         }
 
-        private void yakalaButon_Click(object sender, EventArgs e)
-        {
-            //SaveFileDialog sfd = new SaveFileDialog();
-            //sfd.Filter = "(*.jpg)|*.jpg";
-            //DialogResult dr = sfd.ShowDialog();
-
-
-            //if (dr == DialogResult.OK)//diyalog ok ise resmi kaydet
-            //{
-            //    pictureBox1.Image.Save(sfd.FileName);
-            //}
-        }
-
-
         private void timer1_Tick(object sender, EventArgs e)
         {
-            if (pictureBox1.Image != null)
+            try
             {
-                var image = new Bitmap(pictureBox1.Image);
-                var ocr = new TesseractEngine("./Traineddata", "eng");
-                var sonuc = ocr.Process(image);
-                if (sonuc != null)
+                if (pictureBox1.Image != null)
                 {
-                    richTextBox2.Text = sonuc.GetText();
-
-                    string readyText = RemoveSpaceUpper(sonuc.GetText());
-
-                    string result = CleanTextAlgorithm(readyText);
-
-                    if (_plateList.Any(x => x.Plate == result))
+                    var image = new Bitmap(pictureBox1.Image);
+                    var ocr = new TesseractEngine("./Traineddata", "eng");
+                    var sonuc = ocr.Process(image);
+                    if (sonuc != null)
                     {
-                        richTextBox1.Text = result;
-                        var asd = _plateList.FirstOrDefault(x => x.Plate == result);
-                        asd.CreateDate = DateTime.Now;
-                        _dataBase.SaveChanges();
+                        richTextBox2.Text = sonuc.GetText();
+
+                        string readyText = RemoveSpaceUpper(sonuc.GetText());
+
+                        string result = CleanTextAlgorithm(readyText);
+
+                        if (_plateList.Any(x => x.Plate == result))
+                        {
+                            richTextBox1.Text = result;
+                            var asd = _plateList.FirstOrDefault(x => x.Plate == result);
+                            asd.CreateDate = DateTime.Now;
+                            _dataBase.SaveChanges();
+                        }
                     }
                 }
             }
+            catch (Exception exception)
+            {
+                Console.WriteLine(exception);
+                throw;
+            }
         }
 
+        /// <summary>
+        /// Gelen text in filtreleme algoritmaları
+        /// </summary>
+        /// <param name="readyText"></param>
+        /// <returns></returns>
         private string CleanTextAlgorithm(string readyText)
         {
             try
             {
-                int dirtyDataLength = readyText.Length;
-                string result = "";
-                //gelen veri kirli karakterlerden arindirilir.
-                for (int i = 0; i < dirtyDataLength; i++)
-                {
-                    if (readyText[i] == '0' || readyText[i] == '1' ||
-                        readyText[i] == '2' || readyText[i] == '3' ||
-                        readyText[i] == '4' || readyText[i] == '5' ||
-                        readyText[i] == '6' || readyText[i] == '7' ||
-                        readyText[i] == '8' || readyText[i] == '9' ||
-                        readyText[i] == 'A' || readyText[i] == 'B' ||
-                        readyText[i] == 'C' || readyText[i] == 'D' ||
-                        readyText[i] == 'E' || readyText[i] == 'F' ||
-                        readyText[i] == 'G' || readyText[i] == 'H' ||
-                        readyText[i] == 'I' || readyText[i] == 'J' ||
-                        readyText[i] == 'K' || readyText[i] == 'L' ||
-                        readyText[i] == 'M' || readyText[i] == 'N' ||
-                        readyText[i] == 'O' || readyText[i] == 'P' ||
-                        readyText[i] == 'R' || readyText[i] == 'S' ||
-                        readyText[i] == 'T' || readyText[i] == 'U' ||
-                        readyText[i] == 'V' || readyText[i] == 'Y' ||
-                        readyText[i] == 'Z' || readyText[i] == 'W' ||
-                        readyText[i] == 'X')
-                    {
-                        result += readyText[i];
-                    }
+                string result = DiffirentCharacterDelete(readyText);
 
-                    else
-                    {
-                        continue;
-                    }
-                }
+                string returnResult = PlateFormatAccord(result);
 
-                //Turk plaka formatina uyarla
+                return returnResult;
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+
+        }
+
+        /// <summary>
+        /// Gelen string i Turk plakasına uyarlamak için kullanılan algoritma.
+        /// </summary>
+        /// <param name="result"></param>
+        /// <returns></returns>
+        private string PlateFormatAccord(string result)
+        {
+            try
+            {
                 int cleanedTextLenght = result.Length;
                 bool firstTwoCharIsNumber = false; //ilk iki karakter rakam mı
                 int staticNumberCountOnPlate = 0; //ilk iki karakter rakam olmak zorunda
@@ -177,14 +165,63 @@ namespace ANPR
                 }
 
                 return returnResult;
-
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
                 throw;
             }
+        }
 
+        /// <summary>
+        /// Tanımlı olan karakterler dışında gelen karakterleri temizleme metodu
+        /// </summary>
+        /// <param name="readyText"></param>
+        /// <returns></returns>
+        private string DiffirentCharacterDelete(string readyText)
+        {
+            try
+            {
+                int dirtyDataLength = readyText.Length;
+                string result = "";
+                //gelen veri kirli karakterlerden arindirilir.
+                for (int i = 0; i < dirtyDataLength; i++)
+                {
+                    if (readyText[i] == '0' || readyText[i] == '1' ||
+                        readyText[i] == '2' || readyText[i] == '3' ||
+                        readyText[i] == '4' || readyText[i] == '5' ||
+                        readyText[i] == '6' || readyText[i] == '7' ||
+                        readyText[i] == '8' || readyText[i] == '9' ||
+                        readyText[i] == 'A' || readyText[i] == 'B' ||
+                        readyText[i] == 'C' || readyText[i] == 'D' ||
+                        readyText[i] == 'E' || readyText[i] == 'F' ||
+                        readyText[i] == 'G' || readyText[i] == 'H' ||
+                        readyText[i] == 'I' || readyText[i] == 'J' ||
+                        readyText[i] == 'K' || readyText[i] == 'L' ||
+                        readyText[i] == 'M' || readyText[i] == 'N' ||
+                        readyText[i] == 'O' || readyText[i] == 'P' ||
+                        readyText[i] == 'R' || readyText[i] == 'S' ||
+                        readyText[i] == 'T' || readyText[i] == 'U' ||
+                        readyText[i] == 'V' || readyText[i] == 'Y' ||
+                        readyText[i] == 'Z' || readyText[i] == 'W' ||
+                        readyText[i] == 'X')
+                    {
+                        result += readyText[i];
+                    }
+
+                    else
+                    {
+                        continue;
+                    }
+                }
+
+                return result;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
         }
 
         private static string RemoveSpaceUpper(string input)
