@@ -28,17 +28,6 @@ namespace ANPR
         private FilterInfoCollection fico;
         private VideoCaptureDevice vcd;
 
-        private void toTextButton_Click(object sender, EventArgs e)
-        {
-            //if (openFileDialog1.ShowDialog() == DialogResult.OK)
-            //{
-            //    var image = new Bitmap(openFileDialog1.FileName);
-            //    var ocr = new TesseractEngine("./Traineddata", "eng");
-            //    var sonuc = ocr.Process(image);
-            //    richTextBox1.Text = sonuc.GetText();
-            //}
-        }
-
         private void Form1_Load(object sender, EventArgs e)
         {
             fico = new FilterInfoCollection(FilterCategory.VideoInputDevice);
@@ -56,6 +45,7 @@ namespace ANPR
             vcd.Start();
             timer1.Start();
             _plateList = _dataBase.PlateRecognition.ToList();
+
         }
 
         /// <summary>
@@ -81,6 +71,7 @@ namespace ANPR
             //}
         }
 
+
         private void timer1_Tick(object sender, EventArgs e)
         {
             if (pictureBox1.Image != null)
@@ -90,15 +81,17 @@ namespace ANPR
                 var sonuc = ocr.Process(image);
                 if (sonuc != null)
                 {
+                    richTextBox2.Text = sonuc.GetText();
+
                     string readyText = RemoveSpaceUpper(sonuc.GetText());
 
                     string result = CleanTextAlgorithm(readyText);
 
-                    if (_plateList.Any(x=>x.Plate == result))
+                    if (_plateList.Any(x => x.Plate == result))
                     {
                         richTextBox1.Text = result;
-                        var asd=_plateList.FirstOrDefault(x => x.Plate == result);
-                        asd.CreateDate=DateTime.Now;
+                        var asd = _plateList.FirstOrDefault(x => x.Plate == result);
+                        asd.CreateDate = DateTime.Now;
                         _dataBase.SaveChanges();
                     }
                 }
@@ -109,21 +102,82 @@ namespace ANPR
         {
             try
             {
-                int count = readyText.Length;
+                int dirtyDataLength = readyText.Length;
                 string result = "";
-
-                for (int i = 0; i < count; i++)
+                //gelen veri kirli karakterlerden arindirilir.
+                for (int i = 0; i < dirtyDataLength; i++)
                 {
-                    if (readyText[i] == '/')
+                    if (readyText[i] == '0' || readyText[i] == '1' ||
+                        readyText[i] == '2' || readyText[i] == '3' ||
+                        readyText[i] == '4' || readyText[i] == '5' ||
+                        readyText[i] == '6' || readyText[i] == '7' ||
+                        readyText[i] == '8' || readyText[i] == '9' ||
+                        readyText[i] == 'A' || readyText[i] == 'B' ||
+                        readyText[i] == 'C' || readyText[i] == 'D' ||
+                        readyText[i] == 'E' || readyText[i] == 'F' ||
+                        readyText[i] == 'G' || readyText[i] == 'H' ||
+                        readyText[i] == 'I' || readyText[i] == 'J' ||
+                        readyText[i] == 'K' || readyText[i] == 'L' ||
+                        readyText[i] == 'M' || readyText[i] == 'N' ||
+                        readyText[i] == 'O' || readyText[i] == 'P' ||
+                        readyText[i] == 'R' || readyText[i] == 'S' ||
+                        readyText[i] == 'T' || readyText[i] == 'U' ||
+                        readyText[i] == 'V' || readyText[i] == 'Y' ||
+                        readyText[i] == 'Z' || readyText[i] == 'W' ||
+                        readyText[i] == 'X')
                     {
-                        i++;
-                        continue;
+                        result += readyText[i];
                     }
 
-                    result += readyText[i];
+                    else
+                    {
+                        continue;
+                    }
                 }
 
-                return result;
+                //Turk plaka formatina uyarla
+                int cleanedTextLenght = result.Length;
+                bool firstTwoCharIsNumber = false; //ilk iki karakter rakam mı
+                int staticNumberCountOnPlate = 0; //ilk iki karakter rakam olmak zorunda
+                string temp = "";//plakadaki ilk iki rakam
+                int tempCount = 0;//ilk iki karakterden sonrada ardışık olarak plaka sonunda rakamlar olabilir o yüzden birden fazla tekrar yapmamalı.
+                string returnResult = "";
+
+                for (int i = 0; i < cleanedTextLenght; i++)
+                {
+                    if (result[i] == '0' || result[i] == '1' ||
+                        result[i] == '2' || result[i] == '3' ||
+                        result[i] == '4' || result[i] == '5' ||
+                        result[i] == '6' || result[i] == '7' ||
+                        result[i] == '8' || result[i] == '9')
+                    {
+                        staticNumberCountOnPlate++;
+                        temp += result[i];
+                    }
+                    else if (staticNumberCountOnPlate == 2)
+                    {
+                        firstTwoCharIsNumber = true;
+                    }
+                    else
+                    {
+                        staticNumberCountOnPlate = staticNumberCountOnPlate == 0 ? 0 : staticNumberCountOnPlate--;
+                        temp = "";
+                    }
+
+                    if (firstTwoCharIsNumber && tempCount == 0)
+                    {
+                        returnResult = temp;
+                        tempCount++;
+                    }
+
+                    if (tempCount == 1)
+                    {
+                        returnResult += result[i];
+                    }
+                }
+
+                return returnResult;
+
             }
             catch (Exception e)
             {
