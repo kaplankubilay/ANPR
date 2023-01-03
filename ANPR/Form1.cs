@@ -22,8 +22,8 @@ namespace ANPR
             InitializeComponent();
         }
 
-        ANPRDBEntities _dataBase = new ANPRDBEntities();
-        List<PlateRecognition> _plateList = new List<PlateRecognition>();
+        private ANPRDBEntities _dataBase = new ANPRDBEntities();
+        private List<PlateRecognition> _plateList = new List<PlateRecognition>();
 
         private FilterInfoCollection fico;
         private VideoCaptureDevice vcd;
@@ -39,6 +39,16 @@ namespace ANPR
         }
 
         private void baslatButon_Click(object sender, EventArgs e)
+        {
+            //vcd = new VideoCaptureDevice(fico[comboBox1.SelectedIndex].MonikerString);
+            //vcd.NewFrame += Vcd_NewFrame; //hareketli görüntü sağlar
+            //vcd.Start();
+            //timer1.Start();
+            //_plateList = _dataBase.PlateRecognition.ToList();
+            StartApplication();
+        }
+
+        private void StartApplication()
         {
             vcd = new VideoCaptureDevice(fico[comboBox1.SelectedIndex].MonikerString);
             vcd.NewFrame += Vcd_NewFrame; //hareketli görüntü sağlar
@@ -70,9 +80,12 @@ namespace ANPR
                     {
                         richTextBox2.Text = sonuc.GetText();
 
-                        string readyText = RemoveSpaceUpper(sonuc.GetText());
+                        //string readyText = RemoveSpaceUpper(sonuc.GetText());
+                        //string result = CleanTextAlgorithm(readyText);
 
-                        string result = CleanTextAlgorithm(readyText);
+                        string cleanedText = CleanTextAlgorithm(sonuc.GetText());
+
+                        string result = DinamikStringListOlusturma(cleanedText, _plateList);
 
                         if (_plateList.Any(x => x.Plate == result))
                         {
@@ -91,6 +104,50 @@ namespace ANPR
             }
         }
 
+        private static string DinamikStringListOlusturma(string sliceString, List<PlateRecognition> plates)
+        {
+            //bosluk sayısı + 1 parca sayısıdır
+            int pieceCount = 1;
+
+            for (int i = 0; i < sliceString.Length; i++)
+            {
+                if (sliceString.Substring(i, 1) == " ")
+                {
+                    pieceCount++;
+                }
+            }
+
+            List<string> items = new List<string>();
+
+            string[] allPieces = new string[pieceCount];
+
+            allPieces = sliceString.Split(' ');
+
+            for (int i = 0; i < allPieces.Length; i++)
+            {
+                items.Add(allPieces[i]);
+            }
+
+            foreach (PlateRecognition plate in plates)
+            {
+                int findPieceCount = 0;
+                foreach (string item in items)
+                {
+                    if (plate.Plate.Contains(item) && item != "")
+                    {
+                        findPieceCount++;
+                    }
+
+                    if (findPieceCount >= 2)
+                    {
+                        return plate.Plate;
+                    }
+                }
+            }
+
+            return "";
+        }
+
         /// <summary>
         /// Gelen text in filtreleme algoritmaları
         /// </summary>
@@ -102,17 +159,17 @@ namespace ANPR
             {
                 string result = DiffirentCharacterDelete(readyText);
 
-                string returnResult = PlateFormatAccord(result);
+                //string returnResult = PlateFormatAccord(result);
 
-                return returnResult;
+                //return returnResult;
 
+                return result;
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
                 throw;
             }
-
         }
 
         /// <summary>
@@ -204,11 +261,10 @@ namespace ANPR
                         readyText[i] == 'T' || readyText[i] == 'U' ||
                         readyText[i] == 'V' || readyText[i] == 'Y' ||
                         readyText[i] == 'Z' || readyText[i] == 'W' ||
-                        readyText[i] == 'X')
+                        readyText[i] == 'X' || readyText[i] == ' ')
                     {
                         result += readyText[i];
                     }
-
                     else
                     {
                         continue;
@@ -236,6 +292,12 @@ namespace ANPR
             {
                 throw;
             }
+        }
+
+        private void yenile_btn_Click(object sender, EventArgs e)
+        {
+            richTextBox1.Clear();
+            StartApplication();
         }
     }
 }
